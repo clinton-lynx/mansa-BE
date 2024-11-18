@@ -259,8 +259,8 @@ Use Cases  Here's what I know about the campaign: ${campaignContext} `} ] },
 }
 
 // Simple GET request for testing if the server is live
-app.get('/status', (req, res) => {
-  res.write("test")
+app.get('/', (req, res) => {
+  res.send("test")
 });
 
 // POST request for chat (existing endpoint)
