@@ -269,7 +269,7 @@ app.post('/chat', async (req, res) => {
   console.log("Chat endpoint hit");
 
   try {
-    console.log(hitted);
+    console.log("hitted");
     
     const { userInput, campaignDetails } = req.body;
     
