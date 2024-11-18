@@ -266,21 +266,6 @@ app.get('/status', (req, res) => {
 // POST request for chat (existing endpoint)
 app.post('/chat', async (req, res) => {
   console.log("Chat endpoint hit");
-    try {
-    const userInput = req.body?.userInput;
-    if (!userInput) {
-      return res.status(400).json({ error: 'Invalid request body' });
-    }
-
-    const response = await runChat(userInput);
-    res.json({ response });
-  } catch (error) {
-    console.error('Error in chat endpoint:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
-  }
-  // You can add logic here for handling the chat request
-  res.status(200).json({ message: 'Chat request received' });
-});
 
   try {
     const { userInput, campaignDetails } = req.body;
