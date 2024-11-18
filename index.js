@@ -272,7 +272,7 @@ app.post('/chat', async (req, res) => {
     console.log("hitted");
     
     const { userInput, campaignDetails } = req.body;
-    
+    console.log("Received campaignDetails:", campaignDetails); // Log the incoming data
     if (!userInput || !campaignDetails) {
       return res.status(400).json({ error: 'Invalid request body, missing userInput or campaignDetails' });
     }
