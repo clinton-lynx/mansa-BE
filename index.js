@@ -153,6 +153,7 @@ async function runChat(userInput, campaignDetails) {
   ];
   const campaignContext = generateCampaignInfo(campaignDetails);
   console.log(campaignDetails);
+  console.log(campaignContext);
   
   // Use campaignDetails to customize the chat history
   const chatHistory = [
@@ -268,6 +269,8 @@ app.post('/chat', async (req, res) => {
   console.log("Chat endpoint hit");
 
   try {
+    console.log(hitted);
+    
     const { userInput, campaignDetails } = req.body;
     
     if (!userInput || !campaignDetails) {
