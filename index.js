@@ -260,7 +260,7 @@ Use Cases  Here's what I know about the campaign: ${campaignContext} `} ] },
 
 // Simple GET request for testing if the server is live
 app.get('/status', (req, res) => {
-  res.status(200).json({ message: 'Server is live and running!' });
+  res.write("test")
 });
 
 // POST request for chat (existing endpoint)
