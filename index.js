@@ -258,9 +258,18 @@ Use Cases  Here's what I know about the campaign: ${campaignContext} `} ] },
   return response.text();
 }
 
+// Simple GET request for testing if the server is live
+app.get('/status', (req, res) => {
+  res.status(200).json({ message: 'Server is live and running!' });
+});
+
+// POST request for chat (existing endpoint)
 app.post('/chat', async (req, res) => {
   console.log("Chat endpoint hit");
-  
+  // You can add logic here for handling the chat request
+  res.status(200).json({ message: 'Chat request received' });
+});
+
   try {
     const { userInput, campaignDetails } = req.body;
     
