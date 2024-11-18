@@ -121,7 +121,7 @@ function generateCampaignInfo(data) {
   if (paymentmade && paymentmade.length > 0) {
       paymentmade.forEach((payment, index) => {
           campaignInfo.push(
-              `Payer ${index + 1}: ${payment.payer_name} made a payment of $${payment.amount} using ${payment.payment_method} on ${new Date(payment.created_at).toDateString()}.` +
+              `Payer ${index + 1}: ${payment.payer_name} made a payment of ₦${payment.amount} using ${payment.payment_method} on ${new Date(payment.created_at).toDateString()}.` +
               ` Reference ID is ${payment.reference}.`
           );
       });
@@ -242,9 +242,9 @@ Focused on implementing secure payment flows and handling server-side logic. Res
 Features
 Our Team
 Use Cases  Here's what I know about the campaign: ${campaignContext} `} ] },
-    { role: "model", parts: [{ text: `Hello, I'm Mansa ai. Ask me whattever youll like to know about ${campaignDetails.title} campaign.`} ] },
+    { role: "model", parts: [{ text: `Hello, I'm Mansa ai. Ask me whattever youll like to know about ${campaignDetails.title || "This "} campaign.`} ] },
     { role: "user", parts: [{ text: `hi`} ] },
-    { role: "model", parts: [{ text: `Hello, I'm Mansa ai. Ask me whattever youll like to know about ${campaignDetails.title} campaign. `} ] },
+    { role: "model", parts: [{ text: `Hello, I'm Mansa ai. Ask me whattever youll like to know about ${campaignDetails.title || "This "} campaign. `} ] },
     { role: "user", parts: [{ text: userInput }] }, // user message
   ];
 
