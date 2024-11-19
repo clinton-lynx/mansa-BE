@@ -85,10 +85,11 @@ const port = process.env.PORT || 3000;
 
 // Enable CORS for a specific origin
 const corsOptions = {
-  origin: 'http://localhost:5173',  // Add your frontend URL here
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],  // Specify allowed HTTP methods
-  allowedHeaders: ['Content-Type', 'Authorization'],  // Specify allowed headers
+  origin: '*', // Allow requests from any origin
+  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Specify allowed HTTP methods
+  allowedHeaders: ['Content-Type', 'Authorization'], // Specify allowed headers
 };
+
 
 app.use(cors(corsOptions));
 
