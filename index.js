@@ -15,7 +15,7 @@ const port = process.env.PORT || 3000;
 
 // Enable CORS for a specific origin
 const corsOptions = {
-  origin:'https://mansa-pay-fe.vercel.app/', // Allow requests from any origin
+  origin: 'https://mansa-pay-fe.vercel.app' // Allow requests from any origin
   methods: ['GET', 'POST', 'PUT', 'DELETE'], // Specify allowed HTTP methods
   allowedHeaders: ['Content-Type', 'Authorization'], // Specify allowed headers
   credentials: true,  
