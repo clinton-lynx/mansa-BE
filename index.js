@@ -1,94 +1,29 @@
-// const express = require('express');
-// const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require('@google/generative-ai');
-// const dotenv = require('dotenv').config();
-// const cors = require('cors');  // Import cors
-
-// const app = express();
-// const port = process.env.PORT || 3000;
-
-// // Enable CORS for all routes
-// app.use(cors());  // This allows all domains to make requests
-
-// // If you want to restrict CORS to specific origins (e.g., your frontend at localhost:5173), use:
-//   // const corsOptions = {
-//   //   origin: 'http://localhost:5173',  // Replace with your frontend URL
-//   // };
-//   // app.use(cors(corsOptions));
-
-// app.use(express.json());
-
-// const MODEL_NAME = "gemini-pro";
-// const API_KEY = process.env.API_KEY;
-
-// async function runChat(userInput) {
-//   const genAI = new GoogleGenerativeAI(API_KEY);
-//   const model = genAI.getGenerativeModel({ model: MODEL_NAME });
-
-//   const generationConfig = {
-//     temperature: 0.9,
-//     topK: 1,
-//     topP: 1,
-//     maxOutputTokens: 1000,
-//   };
-
-//   const safetySettings = [
-//     {
-//       category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-//       threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-//     },
-//     // ... other safety settings
-//   ];
-
-//   const chat = model.startChat({
-//     generationConfig,
-//     safetySettings,
-//     history: [
-//       { role: "user", parts: [{ text: "You are Sam, a friendly assistant..." }] },
-//       { role: "model", parts: [{ text: "Hello! Welcome to Coding Money..." }] },
-//     ],
-//   });
-
-//   const result = await chat.sendMessage(userInput);
-//   const response = result.response;
-//   return response.text();
-// }
-
-// app.post('/chat', async (req, res) => {
-//   console.log("hitted");
-//   try {
-//     const userInput = req.body?.userInput;
-//     if (!userInput) {
-//       return res.status(400).json({ error: 'Invalid request body' });
-//     }
-
-//     const response = await runChat(userInput);
-//     res.json({ response });
-//   } catch (error) {
-//     console.error('Error in chat endpoint:', error);
-//     res.status(500).json({ error: 'Internal Server Error' });
-//   }
-// });
-
-// app.listen(port, () => {
-//   console.log(`Server listening on port ${port}`);
-// });
-
-
-
 const express = require('express');
 const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require('@google/generative-ai');
 const dotenv = require('dotenv').config();
 const cors = require('cors');  // Import cors
+const path = require('path');
+const OpenAI = require('openai');
+// const dotenv = require('dotenv');
+const fs = require('fs');
+// const multer = require('multer');
+const fetch = require('node-fetch');
+// const { Configuration, OpenAIApi } = require("openai");
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 // Enable CORS for a specific origin
 const corsOptions = {
-  origin: '*', // Allow requests from any origin
+  origin: 'http://localhost:5173', // Allow requests from any origin
   methods: ['GET', 'POST', 'PUT', 'DELETE'], // Specify allowed HTTP methods
   allowedHeaders: ['Content-Type', 'Authorization'], // Specify allowed headers
+  credentials: true,  
 };
+
+
+const multer = require("multer");   
+const { Configuration, OpenAIApi }  = require("openai");
 
 
 app.use(cors(corsOptions));
@@ -98,17 +33,54 @@ app.use(express.json());
 const MODEL_NAME = "gemini-pro";
 const API_KEY = process.env.API_KEY;
 
+
+// Initialize OpenAI
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+const upload = multer({ dest: 'uploads/' });
+
+
+// Configure file storage for audio uploads
+const storage = multer.diskStorage({
+  destination: "./uploads/audio", // Specify upload directory
+  filename: (req, file, cb) => {
+    cb(null, `${Date.now()}-${file.originalname}`);
+  },
+});
+
+// const upload = multer({
+//   storage,
+//   fileFilter: (req, file, cb) => {
+//     const fileTypes = /mp3|webm|m4a|ogg/;
+//     const extName = fileTypes.test(
+//       path.extname(file.originalname).toLowerCase()
+//     );     
+//     const mimeType = fileTypes.test(file.mimetype);
+//     if (mimeType && extName) {
+//       return cb(null, true);
+//     }
+//     cb(new Error("Only audio files are allowed!"));
+//   },
+// });
+
+
+
+
+
 // Generate natural language sentences from campaign details
 function generateCampaignInfo(data) {
+  console.log(data);
   const campaignInfo = [];
 
   // Extract and format the campaign details
   const { campaign, totalcampaignamountreceived, paymentmade } = data;
-
+  console.log(campaign)
   if (campaign) {
       campaignInfo.push(`The campaign title is "${campaign.title}".`);
       campaignInfo.push(`Description: "${campaign.description}".`);
-      campaignInfo.push(`The price per payment is ₦${campaign.price}.`);
+      campaignInfo.push(`The price per payment is ₦${campaign.price }.`);
       campaignInfo.push(`The due date for this campaign is ${new Date(campaign.duedate).toDateString()}.`);
       campaignInfo.push(`Campaign was created on ${new Date(campaign.created_at).toDateString()}.`);
   }
@@ -273,7 +245,7 @@ app.post('/chat', async (req, res) => {
     console.log("hitted");
     
     const { userInput, campaignDetails } = req.body;
-    console.log("Received campaignDetails:", campaignDetails); // Log the incoming data
+    console.log("Received campaignDetails from chat:", campaignDetails); // Log the incoming data
     if (!userInput || !campaignDetails) {
       return res.status(400).json({ error: 'Invalid request body, missing userInput or campaignDetails' });
     }
@@ -285,6 +257,256 @@ app.post('/chat', async (req, res) => {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
+
+
+
+
+
+
+
+app.post("/transcribe", upload.single("voiceNote"), async (req, res) => {
+  console.log("Transcribe endpoint hit");
+
+  try {
+    const { path: audioPath } = req.file;
+
+    // Configure OpenAI for Whisper
+    const configuration = new Configuration({
+      apiKey: process.env.OPENAI_API_KEY, // Add your OpenAI API key
+    });
+    const openai = new OpenAIApi(configuration);
+
+    // Send the audio file to Whisper for transcription
+    const response = await openai.createTranscription(
+      fs.createReadStream(audioPath), // Read uploaded file
+      "whisper-1"
+    );
+
+    const transcription = response.data.text.trim(); // Get the transcribed text
+    console.log("Transcription:", transcription);
+
+    // Pass the transcribed text to the enhance-title or enhance-description endpoint
+    res.json({ transcription });
+  } catch (error) {
+    console.error("Error in transcription:", error);
+    res.status(500).json({ error: "Failed to transcribe voice note" });
+  }
+});
+
+
+
+
+
+
+
+
+
+
+
+
+// app.post("/transcribe-and-enhance-title", upload.single("voiceNote"), async (req, res) => {
+//   try {
+//     const { path: audioPath } = req.file;
+
+//     const configuration = new Configuration({
+//       apiKey: process.env.OPENAI_API_KEY,
+//     });
+//     const openai = new OpenAIApi(configuration);
+
+//     const transcriptionResponse = await openai.createTranscription(
+//       fs.createReadStream(audioPath),
+//       "whisper-1"
+//     );
+//     const transcription = transcriptionResponse.data.text.trim();
+
+//     // Pass transcription to the title enhancement endpoint
+//     const enhanceResponse = await fetch("http://localhost:3000/enhance-title", {
+//       method: "POST",
+//       headers: { "Content-Type": "application/json" },
+//       body: JSON.stringify({ title: transcription }),
+//     });
+
+//     const enhancedTitle = await enhanceResponse.json();
+//     res.json({ transcription, enhancedTitle });
+//   } catch (error) {
+//     console.error("Error in transcribe-and-enhance-title:", error);
+//     res.status(500).json({ error: "Failed to transcribe and enhance title" });
+//   }
+// });
+;
+
+
+app.post('/transcribe-and-enhance-title', upload.single('voiceNote'), async (req, res) => {
+  console.log("Transcribe and Enhance Title endpoint hit");
+  try {
+    const { path: audioPath } = req.file;
+
+    // Transcribe the audio file
+    const transcriptionResponse = await openai.audio.transcriptions.create({
+      file: fs.createReadStream(audioPath),
+      model: 'whisper-1',
+    });
+
+    const transcription = transcriptionResponse.text.trim();
+console.log("Transcription:", transcription);
+    // Pass transcription to the title enhancement endpoint
+    const enhanceResponse = await fetch('http://localhost:3000/enhance-title', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: transcription }),
+    });
+
+    const enhancedTitle = await enhanceResponse.json();
+    res.json({ transcription, enhancedTitle });
+  } catch (error) {
+    console.error('Error in transcribe-and-enhance-title:', error);
+    res.status(500).json({ error: 'Failed to transcribe and enhance title' });
+  }
+});
+
+
+
+
+
+
+
+
+
+
+// POST request for enhancing campaign titles (new endpoint)
+app.post('/enhance-title', async (req, res) => {
+  console.log("Enhance Title endpoint hit");
+
+  try {
+    const { title } = req.body;
+    if (!title) {
+      return res.status(400).json({ error: 'Invalid request body, missing title' });
+    }
+
+    const genAI = new GoogleGenerativeAI(API_KEY);
+    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+
+    const generationConfig = {
+      temperature: 1,
+      topK: 40,
+      topP: 0.95,
+      maxOutputTokens: 100,
+    };
+
+    // History for the AI prompt, focusing on title enhancement
+    const chatHistory = [
+      { role: "user", parts: [{ text: `This is a crowdfunding application called MansaPay. Enhance the following campaign title to make it more engaging and impactful and not more than 5 words, focusing on the personal story: "${title}" and return response in markdown` }] }
+    ];
+
+    const chat = model.startChat({
+      generationConfig,
+      history: chatHistory,
+    });
+
+    const result = await chat.sendMessage(title);
+    const enhancedTitle = result.response.text();
+// Clean up the AI response to remove formatting like **
+const cleanedEnhancedTitle = enhancedTitle.replace(/\*\*/g, '').trim();
+
+// Send plain text response
+res.json({ enhancedTitle: cleanedEnhancedTitle });
+  } catch (error) {
+    console.error('Error in enhance-title endpoint:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+
+app.post('/enhance-description', async (req, res) => {
+  console.log("Enhance Description endpoint hit");
+
+  try {
+    const { description } = req.body;
+    if (!description) {
+      return res.status(400).json({ error: 'Invalid request body, missing description' });
+    }
+
+    const genAI = new GoogleGenerativeAI(API_KEY);
+    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+
+    const generationConfig = {
+      temperature: 1,
+      topK: 40,
+      topP: 0.95,
+      maxOutputTokens: 300,
+    };
+
+    // History for the AI prompt, focusing on description enhancement
+    const chatHistory = [
+      { 
+        role: "user", 
+        parts: [{ 
+          text: `This is a crowdfunding application called MansaPay. Enhance the following campaign description to make it more engaging, focusing on the personal story and inspiring potential donors: "${description}"` 
+        }] 
+      }
+    ];
+
+    const chat = model.startChat({
+      generationConfig,
+      history: chatHistory,
+    });
+
+    const result = await chat.sendMessage(description);
+    const enhancedDescription = result.response.text().replace(/\*\*/g, '').trim();
+
+    // Respond with the enhanced description
+    res.json({ enhancedDescription });
+  } catch (error) {
+    console.error('Error in enhance-description endpoint:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// POST request for campaign analytics summary (new endpoint)
+app.post('/generate-analytics-summary', async (req, res) => {
+  console.log("Analytics Summary endpoint hit");
+
+  try {
+    const { campaignDetails } = req.body;
+    console.log("Received campaignDetails:", campaignDetails); // Log the incoming data
+    if (!campaignDetails) {
+      return res.status(400).json({ error: 'Invalid request body, missing campaignDetails' });
+    }
+
+    const campaignContext = generateCampaignInfo(campaignDetails);  // Reusing existing function to generate the campaign info
+    console.log("Generated campaign context:", campaignContext);
+    const genAI = new GoogleGenerativeAI(API_KEY);
+    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+
+    const generationConfig = {
+      temperature: 0.9,
+      topK: 1,
+      topP: 1,
+      maxOutputTokens: 500,
+    };
+
+    const chatHistory = [
+      { 
+        role: "user", 
+        parts: [{ text: `Provide a detailed yet concise not more than 55 words summary of the campaign's performance based on the following details. Highlight key metrics such as total funds raised, percentage completion of the goal, notable dates (creation and due date), and any significant trends or patterns in payments received. Include insights that could be valuable for campaign optimization or further action: ${campaignContext}` }] 
+      }
+    ];
+
+    const chat = model.startChat({
+      generationConfig,
+      history: chatHistory,
+    });
+
+    const result = await chat.sendMessage(campaignContext);
+    const analyticsSummary = result.response.text().replace(/\*\*/g, '').trim();
+
+    res.json({ analyticsSummary });
+  } catch (error) {
+    console.error('Error in analytics-summary endpoint:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
 
 app.listen(port, () => {
   console.log(`Server listening on port ${port}`);
